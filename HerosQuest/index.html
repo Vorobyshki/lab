@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Приключения Героя</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Предзагрузка изображений -->
+    <div style="display: none;">
+        <img src="images/player.png" id="playerImg" alt="Player">
+        <img src="images/coin.png" id="coinImg" alt="Coin">
+        <img src="images/enemy.png" id="enemyImg" alt="Enemy">
+        <img src="images/background.png" id="backgroundImg" alt="Background">
+        <img src="images/fireball.png" id="fireballImg" alt="Fireball">
+    </div>
+
+    <div class="game-wrapper">
+        <div class="controls-info">
+            <h3>Управление:</h3>
+            <div class="controls-list">
+                <div class="control-item">
+                    <span class="key">← → или A D</span>
+                    <span class="action">Движение</span>
+                </div>
+                <div class="control-item">
+                    <span class="key">Пробел или W</span>
+                    <span class="action">Прыжок</span>
+                </div>
+                <div class="control-item">
+                    <span class="key">X</span>
+                    <span class="action">Атака</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-container">
+            <div class="hud">
+                <div class="score">Очки: <span id="score">0</span></div>
+                <div class="health">Здоровье: <span id="health">100</span></div>
+                <button id="soundToggle" class="sound-btn">🔊</button>
+            </div>
+            <canvas id="gameCanvas"></canvas>
+            <div id="gameOver" class="game-over hidden">
+                <h2>Игра Окончена!</h2>
+                <p>Ваши очки: <span id="finalScore">0</span></p>
+                <button id="restartButton">Играть снова</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Звуки -->
+    <audio id="backgroundMusic" loop preload="auto">
+        <source src="sounds/background.wav.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="jumpSound" preload="auto">
+        <source src="sounds/jump.wav" type="audio/wav">
+    </audio>
+    <audio id="hitSound" preload="auto">
+        <source src="sounds/hitHurt.wav" type="audio/wav">
+    </audio>
+
+    <script src="game.js"></script>
+</body>
+</html> 
