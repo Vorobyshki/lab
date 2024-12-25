@@ -183,7 +183,7 @@ document.addEventListener('keyup', (e) => {
 function createCoin() {
     return {
         x: Math.random() * (CANVAS.width - 30),
-        y: Math.random() * (CANVAS.height - 200) + 50,
+        y: CANVAS.height - Math.random() * 200 - 50,
         width: 30,
         height: 30
     };
@@ -195,7 +195,8 @@ function createEnemy() {
         y: CANVAS.height - 100,
         width: 40,
         height: 40,
-        speed: 3
+        speed: 3,
+        isDead: false
     };
 }
 
@@ -225,10 +226,17 @@ function initGame() {
     pits = [];
     
     // Create initial objects
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
         coins.push(createCoin());
     }
-    enemies.push(createEnemy());
+    
+    // Создаем несколько врагов
+    for (let i = 0; i < 3; i++) {
+        const enemy = createEnemy();
+        enemy.x = CANVAS.width + i * 300;
+        enemies.push(enemy);
+    }
+    
     pits.push(createPit());
     
     // Update interface
@@ -291,15 +299,34 @@ function updateGame() {
         return true;
     });
 
-    // Enemy collisions
-    enemies.forEach(enemy => {
-        if (checkCollision(PLAYER, enemy)) {
-            takeDamage();
+    // Enemy collisions and movement
+    enemies = enemies.filter(enemy => {
+        if (!enemy.isDead) {
+            enemy.x -= enemy.speed;
+            
+            // Если враг ушел за экран, перемещаем его в начало
+            if (enemy.x + enemy.width < 0) {
+                enemy.x = CANVAS.width + Math.random() * 200;
+                return true;
+            }
+
+            if (checkCollision(PLAYER, enemy)) {
+                if (PLAYER.velocityY > 0 && PLAYER.y + PLAYER.height < enemy.y + enemy.height/2) {
+                    enemy.isDead = true;
+                    PLAYER.velocityY = PLAYER.jumpForce;
+                    PLAYER.score += 2;
+                    updateScore();
+                    playSound(hitSound);
+                } else {
+                    takeDamage();
+                }
+            }
+        } else {
+            // Если враг убит, создаем нового справа
+            enemy.isDead = false;
+            enemy.x = CANVAS.width + Math.random() * 200;
         }
-        enemy.x -= enemy.speed;
-        if (enemy.x + enemy.width < 0) {
-            enemy.x = CANVAS.width;
-        }
+        return true;
     });
 
     // Pit collisions
@@ -310,8 +337,15 @@ function updateGame() {
     });
 
     // Add new coins if needed
-    if (coins.length < 3) {
+    if (coins.length < 7) {
         coins.push(createCoin());
+    }
+
+    // Add new enemies if needed
+    if (enemies.length < 3) {
+        const enemy = createEnemy();
+        enemy.x = CANVAS.width + Math.random() * 200;
+        enemies.push(enemy);
     }
 
     // Update attack position if attacking
@@ -330,11 +364,11 @@ function updateGame() {
 
         // Проверяем попадание атаки по врагам
         enemies.forEach(enemy => {
-            if (checkCollision(
+            if (!enemy.isDead && checkCollision(
                 {x: PLAYER.attackX, y: PLAYER.attackY, width: ATTACK.width, height: ATTACK.height},
                 enemy
             )) {
-                enemy.x = CANVAS.width;
+                enemy.isDead = true;
                 PLAYER.score += 2;
                 updateScore();
                 playSound(hitSound);
@@ -352,17 +386,13 @@ function drawGame() {
         CTX.drawImage(IMAGES.background, 0, 0, CANVAS.width, CANVAS.height);
     }
 
-    // Draw player
-    if (IMAGES.player) {
-        CTX.save();
-        if (!PLAYER.facingRight) {
-            CTX.scale(-1, 1);
-            CTX.drawImage(IMAGES.player, -PLAYER.x - PLAYER.width, PLAYER.y, PLAYER.width, PLAYER.height);
-        } else {
-            CTX.drawImage(IMAGES.player, PLAYER.x, PLAYER.y, PLAYER.width, PLAYER.height);
-        }
-        CTX.restore();
-    }
+    // Draw player as a circle
+    CTX.save();
+    CTX.fillStyle = '#4CAF50';
+    CTX.beginPath();
+    CTX.arc(PLAYER.x + PLAYER.width/2, PLAYER.y + PLAYER.height/2, PLAYER.width/2, 0, Math.PI * 2);
+    CTX.fill();
+    CTX.restore();
     
     // Draw attack effect if attacking
     if (PLAYER.isAttacking && IMAGES.attack) {
@@ -376,19 +406,23 @@ function drawGame() {
         CTX.restore();
     }
 
-    // Draw coins
-    if (IMAGES.coin) {
-        coins.forEach(coin => {
-            CTX.drawImage(IMAGES.coin, coin.x, coin.y, coin.width, coin.height);
-        });
-    }
+    // Draw coins as circles
+    CTX.fillStyle = '#FFD700';
+    coins.forEach(coin => {
+        CTX.beginPath();
+        CTX.arc(coin.x + coin.width/2, coin.y + coin.height/2, coin.width/2, 0, Math.PI * 2);
+        CTX.fill();
+    });
 
-    // Draw enemies
-    if (IMAGES.enemy) {
-        enemies.forEach(enemy => {
-            CTX.drawImage(IMAGES.enemy, enemy.x, enemy.y, enemy.width, enemy.height);
-        });
-    }
+    // Draw enemies as red circles
+    CTX.fillStyle = '#FF0000';
+    enemies.forEach(enemy => {
+        if (!enemy.isDead) {
+            CTX.beginPath();
+            CTX.arc(enemy.x + enemy.width/2, enemy.y + enemy.height/2, enemy.width/2, 0, Math.PI * 2);
+            CTX.fill();
+        }
+    });
 
     // Draw pits
     CTX.fillStyle = 'rgba(0, 0, 0, 0.5)';
@@ -415,17 +449,20 @@ function takeDamage() {
 }
 
 function fallIntoPit() {
+    // Отбрасываем игрока назад на стартовую позицию
+    PLAYER.x = INITIAL_SETTINGS.x;
+    PLAYER.y = INITIAL_SETTINGS.y;
+    PLAYER.velocityX = 0;
+    PLAYER.velocityY = 0;
+    
+    // Отнимаем очки за падение
     if (PLAYER.score >= 5) {
         PLAYER.score -= 5;
     } else {
         PLAYER.score = 0;
     }
-    
-    PLAYER.x = INITIAL_SETTINGS.x;
-    PLAYER.y = INITIAL_SETTINGS.y;
-    PLAYER.velocityX = 0;
-    PLAYER.velocityY = 0;
     updateScore();
+    playSound(hitSound);
 }
 
 function updateScore() {
